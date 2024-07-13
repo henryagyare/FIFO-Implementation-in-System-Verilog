@@ -20,66 +20,72 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module fifo_design(
+module fifo_design #(
+    parameter fifo_depth = 4,
+    parameter fifo_width = 4)
+    (
     input logic clock, write_enable, read_enable, reset,
     output logic empty, full,
     input logic [3:0] write_data,
     output logic [3:0] read_data
     );
 
-    logic [3:0] fifo_queue [7:0];
-    logic [2:0] head, tail;
+    // logic [3:0] fifo_queue [3:0];
+    logic [fifo_width - 1 : 0] fifo_queue [fifo_depth - 1 : 0];
+    logic [1:0] head, tail;
 
-    // initial 
-    // begin
-    //     head = 3'b000;
-    //     tail = 3'b000;
-    //     full = 0;
-    //     empty = 0;
-    // end
+    //  Full and Empty Flags
+    always_comb 
+        begin
+            if (head == tail)
+               begin
+                    empty = 1'b1;
+                    full = 1'b0;
+               end
+            else 
+                if (((tail == 0) && (head == fifo_depth - 1)) || (tail == (head + 1)))
+                   begin
+                        full = 1'b1;
+                        empty = 1'b0;
+                   end
+                else
+                    begin
+                        empty = 1'b0;
+                        full = 1'b0;
+                    end
+        end
 
     always_ff @( posedge clock) 
-    begin : linear_fifo
-        if (!reset)
-            begin
-                tail <= '0;
-                head <= '0;
-                full <= '0;
-                empty <= '0;
-
-                for (int i = 0; i < 8; i++)
-                    fifo_queue[i][3:0] <= 4'bXXXX;
-            end
-        else
-            if (write_enable)
-                if (!read_enable)
-                    begin 
-                        fifo_queue[head][3:0] <= write_data;
-                        head <= head + 1;
-                        empty <= 1'b0;
+        begin
+            if (!reset)
+                begin
+                    tail <= '0;
+                    head <= '0;
+                    // full <= '0;
+                    // empty <= '0;
+                end
+            else
+            // Wrting to buffer operation
+                if (write_enable)
+                    begin
+                        if (!read_enable)
+                            if (!full)
+                                begin
+                                    fifo_queue[head][3:0] <= write_data;
+                                    head <= head + 1;
+//                                    empty <= 1'b0;
+                                end
                     end
                 else
-                    head <= head;
-            else
-                if (read_enable)
+                // Reading from Buffer operation
                     begin
-                        read_data <= fifo_queue[tail][3:0];
-                        tail <= tail + 1;
+                        if (read_enable)
+                            if (!empty)
+                               begin
+                                    read_data <= fifo_queue[tail][3:0];
+                                    tail <= tail + 1;
+                                end
                     end
-                else 
-                    tail <= tail;
-            //  Full and Empty Flags
-            if (head == tail)
-                begin
-                    empty <= 1'b1;
-                    full <= 1'b0;
-                end
-            else 
-                if (tail == (head + 1))
-                    begin
-                        full <= 1'b1;
-                        empty <= 1'b0;
-                    end
-    end
+        end
 
 endmodule
